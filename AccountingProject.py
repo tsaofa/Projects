@@ -10,20 +10,15 @@ import pandas as pd
 import wrds
 conn = wrds.Connection(wrds_username='tsaofa')
 import numpy as np
-import seaborn as sns
 from scipy.stats.mstats import winsorize
-from scipy import stats
 import statsmodels.api as sm
-import matplotlib.pyplot as plt  
-from sklearn.model_selection import train_test_split 
-from sklearn.linear_model import LinearRegression
-from sklearn import metrics
-from sklearn import datasets, linear_model
 import pickle
 
 
 # extract funda data
 def get_funda(start_year, end_year):
+    ''' Given a time period, obtain data from WRDS databale (funda),
+    return the analytical data table for building earnings prediction model using EPS as the target variable'''
 
     funda = conn.raw_sql("""
                           select distinct gvkey, datadate, fyear, fyr, oiadp, at, act, che, lct, dlc, txp, dp, exchg, sich, BKVLPS, CSHO, epspx, dvc, ceq, ivao , lt, dltt, ivst, pstk
@@ -34,74 +29,67 @@ def get_funda(start_year, end_year):
                             select gvkey, sic
                             from compa.company
                             """)
-    
-    security = conn.raw_sql("""
-                            select distinct gvkey, ibtic
-                            from compa.security
-                            """)
 
-    #clean funda data
-    fundaclean=pd.merge(funda,company,on=['gvkey'])
-    fundaclean['sic1']=np.where(fundaclean['sich']>0,fundaclean['sich'],fundaclean['sic'])
-    fundaclean=fundaclean.drop(['sich','sic'],axis=1)
-    fundaclean['sic1']=fundaclean['sic1'].astype(int)
-    fundaclean = fundaclean.dropna()
-    fundaclean = fundaclean.drop_duplicates(['gvkey','fyear'],keep='last') 
+    # Merge tables, standardize sic code, and drop duplicates or missing values
+    data=pd.merge(funda,company,on=['gvkey'])
+    data['sic1']=np.where(data['sich']>0,data['sich'],data['sic'])
+    data=data.drop(['sich','sic'],axis=1)
+    data['sic1']=data['sic1'].astype(int)
+    data = data.dropna()
+    data = data.drop_duplicates(['gvkey','fyear'],keep='last') 
         
-    ## lag variable
-    fundacleanlag1=fundaclean.copy()
-    fundacleanlag1['fyear']=fundacleanlag1['fyear']+1
-    fundacleanlag1=fundacleanlag1.rename(columns={'at':'at_lag1','act':'act_lag1','che':'che_lag1','lct':'lct_lag1','dlc':'dlc_lag1','txp':'txp_lag1',
+    ## Get lag variable
+    lag1=data.copy()
+    lag1['fyear']=lag1['fyear']+1
+    lag1=lag1.rename(columns={'at':'at_lag1','act':'act_lag1','che':'che_lag1','lct':'lct_lag1','dlc':'dlc_lag1','txp':'txp_lag1',
                                                   'ivao':'ivao_lag1','lt':'lt_lag1','dltt':'dltt_lag1','ivst':'ivst_lag1','pstk':'pstk_lag1'})
-    fundacleanlag1['WC_lag1'] = (fundacleanlag1['act_lag1']-fundacleanlag1['che_lag1'])-(fundacleanlag1['lct_lag1']-fundacleanlag1['dlc_lag1'])
-    fundacleanlag1['NCO_lag1'] = (fundacleanlag1['at_lag1']-fundacleanlag1['act_lag1']-fundacleanlag1['ivao_lag1'])-(fundacleanlag1['lt_lag1']-fundacleanlag1['lct_lag1']-fundacleanlag1['dltt_lag1'])
-    fundacleanlag1['FIN_lag1'] = (fundacleanlag1['ivst_lag1']+fundacleanlag1['ivao_lag1'])-(fundacleanlag1['dltt_lag1']+fundacleanlag1['dlc_lag1']+fundacleanlag1['pstk_lag1'])
-    fundacleanlag1=fundacleanlag1[['gvkey','fyear','at_lag1','act_lag1','che_lag1','lct_lag1', 'dlc_lag1','txp_lag1','WC_lag1','NCO_lag1','FIN_lag1']]
-    fundaclean1=pd.merge(fundaclean,fundacleanlag1,on=['gvkey','fyear'])
-
+    lag1['WC_lag1'] = (lag1['act_lag1']-lag1['che_lag1'])-(lag1['lct_lag1']-lag1['dlc_lag1'])
+    lag1['NCO_lag1'] = (lag1['at_lag1']-lag1['act_lag1']-lag1['ivao_lag1'])-(lag1['lt_lag1']-lag1['lct_lag1']-lag1['dltt_lag1'])
+    lag1['FIN_lag1'] = (lag1['ivst_lag1']+lag1['ivao_lag1'])-(lag1['dltt_lag1']+lag1['dlc_lag1']+lag1['pstk_lag1'])
+    lag1=lag1[['gvkey','fyear','at_lag1','act_lag1','che_lag1','lct_lag1', 'dlc_lag1','txp_lag1','WC_lag1','NCO_lag1','FIN_lag1']]
+    data=pd.merge(data,lag1,on=['gvkey','fyear'])
     
-    ## lead variable
-    fundacleanlead1=fundaclean.copy()
-    fundacleanlead1['fyear']=fundacleanlead1['fyear']-1
-    fundacleanlead1=fundacleanlead1.rename(columns={'epspx':'epspx_lead1'})
-    fundacleanlead1=fundacleanlead1[['gvkey','fyear','epspx_lead1']]
-    fundaclean1=pd.merge(fundaclean1,fundacleanlead1,on=['gvkey','fyear'])
+    ## Get lead variable
+    lead1=data.copy()
+    lead1['fyear']=lead1['fyear']-1
+    lead1=lead1.rename(columns={'epspx':'epspx_lead1'})
+    lead1=lead1[['gvkey','fyear','epspx_lead1']]
+    data=pd.merge(data,lead1,on=['gvkey','fyear'])
     
-    ## construct variables (base models)
-    fundaclean1['b']=(fundaclean1['ceq'])/(fundaclean1['csho'])
-    fundaclean1.loc[fundaclean1['epspx'] <= 0, 'NegEPS'] = 1 
-    fundaclean1.loc[fundaclean1['epspx'] > 0, 'NegEPS'] = 0
-    fundaclean1['EPS*NegEPS'] = fundaclean1['epspx']*fundaclean1['NegEPS']
-    fundaclean1['WC'] = (fundaclean1['act']-fundaclean1['che'])-(fundaclean1['lct']-fundaclean1['dlc'])
-    fundaclean1['NCO'] = (fundaclean1['at']-fundaclean1['act']-fundaclean1['ivao'])-(fundaclean1['lt']-fundaclean1['lct']-fundaclean1['dltt'])
-    fundaclean1['FIN'] = (fundaclean1['ivst']+fundaclean1['ivao'])-(fundaclean1['dltt']+fundaclean1['dlc']+fundaclean1['pstk'])
-    fundaclean1['tacc'] = ((fundaclean1['WC']-fundaclean1['WC_lag1'])+(fundaclean1['NCO']-fundaclean1['NCO_lag1'])+(fundaclean1['FIN']-fundaclean1['FIN_lag1']))/fundaclean1['csho']
+    ## construct multiple variables for predictive modeling
+    data['b']=(data['ceq'])/(data['csho'])
+    data.loc[data['epspx'] <= 0, 'NegEPS'] = 1 
+    data.loc[data['epspx'] > 0, 'NegEPS'] = 0
+    data['EPS*NegEPS'] = data['epspx']*data['NegEPS']
+    data['WC'] = (data['act']-data['che'])-(data['lct']-data['dlc'])
+    data['NCO'] = (data['at']-data['act']-data['ivao'])-(data['lt']-data['lct']-data['dltt'])
+    data['FIN'] = (data['ivst']+data['ivao'])-(data['dltt']+data['dlc']+data['pstk'])
+    data['tacc'] = ((data['WC']-data['WC_lag1'])+(data['NCO']-data['NCO_lag1'])+(data['FIN']-data['FIN_lag1']))/data['csho']
        
     ## construct additional features
-    fundaclean1['nc_assets'] = ((fundaclean1['act']-fundaclean1['act_lag1'])-(fundaclean1['che']-fundaclean1['che_lag1']))/fundaclean1['csho']
-    fundaclean1['nc_liab'] = ((fundaclean1['lct']-fundaclean1['lct_lag1'])-(fundaclean1['dlc']-fundaclean1['dlc_lag1'])-(fundaclean1['txp']-fundaclean1['txp_lag1']))/fundaclean1['csho']
-    fundaclean1 = fundaclean1.rename(columns={'dvc':'paid_dividend'})
-    fundaclean1['deprec'] = fundaclean1['dp']/fundaclean1['csho']
-    fundaclean1['paid_dividend'] = fundaclean1['paid_dividend']/fundaclean1['csho']
-    fundaclean1['total_asset'] = fundaclean1['at']/fundaclean1['csho']
-    fundaclean1['total_accrual'] = fundaclean1['nc_assets']-fundaclean1['nc_liab']-fundaclean1['deprec']
-    fundaclean1.loc[fundaclean1['paid_dividend'] > 0, 'Y_Div']=1
-    fundaclean1.loc[fundaclean1['paid_dividend']<= 0, 'Y_Div']=0
+    data['nc_assets'] = ((data['act']-data['act_lag1'])-(data['che']-data['che_lag1']))/data['csho']
+    data['nc_liab'] = ((data['lct']-data['lct_lag1'])-(data['dlc']-data['dlc_lag1'])-(data['txp']-data['txp_lag1']))/data['csho']
+    data = data.rename(columns={'dvc':'paid_dividend'})
+    data['deprec'] = data['dp']/data['csho']
+    data['paid_dividend'] = data['paid_dividend']/data['csho']
+    data['total_asset'] = data['at']/data['csho']
+    data['total_accrual'] = data['nc_assets']-data['nc_liab']-data['deprec']
+    data.loc[data['paid_dividend'] > 0, 'Y_Div']=1
+    data.loc[data['paid_dividend']<= 0, 'Y_Div']=0
     
-    #industry code
-    #fundaclean1['industry']=fundaclean1['sic1'].floordiv(other=100)
-    fundaclean1['industry']=fundaclean1['sic1'].astype(str).str[:2].astype(int)
+    ## Generate industry code
+    data['industry']=data['sic1'].astype(str).str[:2].astype(int)
     
-    #final funda data
-    fundaclean1=fundaclean1[['gvkey','fyear','fyr','datadate','epspx_lead1','epspx','NegEPS','EPS*NegEPS',
+    ## final data view
+    data=data[['gvkey','fyear','fyr','datadate','epspx_lead1','epspx','NegEPS','EPS*NegEPS',
                              'b','tacc','nc_assets', 'nc_liab', 'deprec','paid_dividend','Y_Div', 'industry',
                              'total_asset','total_accrual']]
-    fundaclean1=fundaclean1.dropna() 
-    fundaclean1['fyear']=fundaclean1['fyear'].astype(int)
+    data=data.dropna() 
+    data['fyear']=data['fyear'].astype(int)
     #fundaclean1=pd.merge(fundaclean1,security,on=['gvkey'])
-    fundaclean1 = fundaclean1.drop_duplicates(keep='last') 
+    data = data.drop_duplicates(keep='last') 
     
-    return fundaclean1
+    return data
 
 train_data = get_funda(2005, 2016)
 test_data = get_funda(2013, 2017)
@@ -110,23 +98,31 @@ recomm_data = get_funda(2015, 2019)
 ## Random Walk Model
 def RW_regression(data):
     
+    ''' The random walk model predicts the earning for the next time period based on the earning of the current time period.
+    This function trains a random walk model given a dataset containing the necessary predictor variables'''
+    
     Table = data[['gvkey', 'fyear', 'epspx_lead1', 'epspx']]
 
     for var in ['epspx_lead1', 'epspx']:    
-        Table[var]=np.where(Table[var].isnull(), np.nan, winsorize(Table[var], limits=(0.01,0.01)))
-        
+        Table[var]=np.where(Table[var].isnull(), np.nan, winsorize(Table[var], limits=(0.01,0.01)))        
       
     Y = Table['epspx_lead1']
     X = sm.add_constant(Table[['epspx']])
     result = sm.OLS(Y,X).fit()
+    
+    print(result.summary()) 
+    
     return result
- 
+    
 
 RW_result = RW_regression(train_data)
-RW_result.summary()
 
-## EP model
+
+## Earnings Persistence model
 def EP_regression(data):
+    
+    ''' The earnings persistance model predicts the earning for the next time period based on more extended earnings data in the current time period.
+    This function trains a earnings persistance model given a dataset containing the necessary predictor variables'''
     
     Table = data[['gvkey', 'fyear', 'epspx_lead1', 'NegEPS','epspx','EPS*NegEPS']]
 
@@ -137,15 +133,19 @@ def EP_regression(data):
     Y = Table['epspx_lead1']
     X = sm.add_constant(Table[['NegEPS','epspx','EPS*NegEPS']])
     result = sm.OLS(Y,X).fit()
+    
+    print(result.summary()) 
+    
     return result
  
 
 EP_result = EP_regression(train_data)
-EP_result.summary()
 
-
-## IR model
-def IR_regression(data):
+## Residual Income model
+def RI_regression(data):
+    
+    ''' The residual income model predicts the earning for the next time period based on price, earning, and book values in the current time period.
+    This function trains a residual income model given a dataset containing the necessary predictor variables'''
     
     Table = data[['gvkey', 'fyear', 'epspx_lead1', 'NegEPS','epspx','EPS*NegEPS','b','tacc']]
 
@@ -156,14 +156,22 @@ def IR_regression(data):
     Y = Table['epspx_lead1']
     X = sm.add_constant(Table[['NegEPS','epspx','EPS*NegEPS','b','tacc']])
     result = sm.OLS(Y,X).fit()
+    
+    print(result.summary()) 
+    
     return result
  
+RI_result =RI_regression(train_data)
 
-IR_result =IR_regression(train_data)
-IR_result.summary()
 
 ## Fit GDP
 def GDP_regression(data, table_type = 1, save = False):
+    
+    ''' In an effort to improve the EP model, GDP forecasting data was added (source: OECD) to investigate the effect of GDP on earnings prediction.
+    This function trains a GDP model given a dataset containing the necessary predictor variables.
+    Table_type = 1 trains the model across all industries and prints out pooled result.
+    Table_type = 2 trains the model within industries.
+    save = False (default) does not save the model as .sav files'''
     
     metric = pd.read_csv('GDP.csv')
     metric = metric.loc[metric['LOCATION']=='WLD']
@@ -184,6 +192,7 @@ def GDP_regression(data, table_type = 1, save = False):
         X = sm.add_constant(Table[['epspx', 'NegEPS','EPS*NegEPS', 'Value']])
         result = sm.OLS(Y,X).fit()      
         
+        print(result.summary()) 
         return result
     
     elif table_type == 2:
@@ -235,19 +244,23 @@ def GDP_regression(data, table_type = 1, save = False):
                  })
         result_table = result_table.sort_values(by = ['industry'])
         
+        print(ind_GDP.describe().transpose())
         return result_table
     
 pooled_GDP = GDP_regression(train_data)
-pooled_GDP.summary()
 
 ind_GDP = GDP_regression(train_data,table_type = 2)
-ind_GDP_summ = ind_GDP.describe().transpose()
- 
-ind_GDP.to_csv('ind_GDP.csv')
 
 
 ## HVZ regression 
 def HVZ_regression(data, table_type = 1, save = False):
+    
+    ''' In an effort to improve the EP model, an model similar to the HVZ model was developed (source: Hou, K., van Dijk, M.A., Zhang, Y., 2012. The implied cost of capital: A new approach. Journal
+    of Accounting & Economics, 53, 504–526.) The only difference from the HVZ models is that all variables are scaled by outstanding shares.
+    This function trains an HVZ model given a dataset containing the necessary predictor variables.
+    Table_type = 1 trains the model across all industries and prints out pooled result.
+    Table_type = 2 trains the model within industries.
+    save = False (default) does not save the model as .sav files'''
     
     Table = data[['gvkey', 'fyear', 'epspx_lead1', 'epspx', 'total_asset', 'paid_dividend','Y_Div','NegEPS','total_accrual','industry']]
 
@@ -258,6 +271,8 @@ def HVZ_regression(data, table_type = 1, save = False):
         Y = Table['epspx_lead1']
         X = sm.add_constant(Table[['epspx', 'total_asset', 'paid_dividend','Y_Div','NegEPS','total_accrual']])
         result = sm.OLS(Y,X).fit()
+        
+        print(result.summary()) 
         return result
     
     elif table_type == 2:
@@ -317,18 +332,23 @@ def HVZ_regression(data, table_type = 1, save = False):
                  })
         result_table = result_table.sort_values(by = ['industry'])
         
+        print(result_table.describe().transpose())
         return result_table
 
 pooled_HVZ = HVZ_regression(train_data)
-pooled_HVZ.summary()
 
 ind_HVZ = HVZ_regression(train_data,table_type = 2)
-ind_HVZ_summ = ind_HVZ.describe().transpose()
- 
-ind_HVZ.to_csv('ind_HVZ.csv')
+
  
 ##Earnings volatility model
 def EV_regression(data, table_type = 1, save = False):
+    
+    ''' In an effort to improve the EP model, a new model was developed to take into account earnings volatility.
+    Earnings volatility is defined as the standard deviation of the earnings in the past 3 years.
+    This function trains an earnings volatility model given a dataset containing the necessary predictor variables.
+    Table_type = 1 trains the model across all industries and prints out pooled result.
+    Table_type = 2 trains the model within industries.
+    save = False (default) does not save the model as .sav files'''
     
     Table = data[['gvkey', 'fyear', 'epspx_lead1', 'epspx', 'NegEPS','EPS*NegEPS','industry']]
       
@@ -352,6 +372,7 @@ def EV_regression(data, table_type = 1, save = False):
         X = sm.add_constant(Table[['epspx', 'NegEPS', 'EPS*NegEPS', 'earn_volat']])
         result = sm.OLS(Y,X).fit()
         
+        print(result.summary())
         return result
     
     elif table_type == 2:
@@ -403,88 +424,17 @@ def EV_regression(data, table_type = 1, save = False):
                  'adj_r2': adj_r2
                  })
         result_table = result_table.sort_values(by = ['industry'])
-                
+        
+        print(result_table.describe().transpose())
         return result_table      
 
 pooled_EV = EV_regression(train_data)
-pooled_EV.summary()
 
 ind_EV = EV_regression(train_data,table_type = 2, save = True)
-ind_EV_summ = ind_EV.describe().transpose()
 
-## Market share regression
-#CRSP Data
-ccm = conn.raw_sql("""select gvkey, lpermno as permno, linktype, linkprim, 
-                  linkdt, linkenddt
-                  from crsp.ccmxpf_linktable
-                  where substr(linktype,1,1)='L'
-                  and (linkprim ='C' 
-                  or linkprim='P')""") 
-crsp = conn.raw_sql("""select a.permno, a.permco, a.date,
-                    a.prc, b.shrcd, b.exchcd
-	                  from crsp.msf as a 
-                    left join crsp.msenames as b
-	                  on a.permno = b.permno
-	                  and b.namedt <= a.date
-	                  and a.date <= b.nameendt
-	                  where b.exchcd between 1 and 2
-                    and b.shrcd between 10 and 11
-                    and a.date between '2006-01-01'
-                    and '2017-12-31'
-                    """)
-#Linktable Dates
-ccm['linkdt']=pd.to_datetime(ccm['linkdt'])
-ccm['linkenddt']=pd.to_datetime(ccm['linkenddt'])
-ccm['linkenddt']=ccm['linkenddt'].fillna(pd.to_datetime('today'))
+### Earnings volatility model was the best-fitted out of all the ones investigated, and thus was used to make final predictions. 
 
-#Merge Compustat and Linktable
-ccm1=pd.merge(fundaclean1[['gvkey','datadate','fyear','NegEPS', 'bkvlps','bkvlps_lag1', 'epspx_lead1', "epspx", "tacc",'industry']],ccm,how='left',on=['gvkey'])
-ccm1['datadate']=pd.to_datetime(ccm1['datadate'])
-
-
-#Set dates for CRPS Merge
-crsp['date']=pd.to_datetime(crsp['date'])
-crsp['jdate']=crsp['date']+pd.offsets.MonthEnd(0) 
-
-#Merge with CRSP
-ccm2=ccm1[(ccm1['datadate']>=ccm1['linkdt'])&(ccm1['datadate']<=ccm1['linkenddt'])]
-ccm2=ccm2[['gvkey','fyear','datadate','epspx_lead1','epspx','NegEPS','bkvlps','bkvlps_lag1','tacc','industry', 'permno']]
-crspcomp=pd.merge(ccm2, crsp,how='left', on=['permno'])
-crspcomp=crspcomp[(crspcomp['jdate']==crspcomp['datadate'])]
-crspcomp = crspcomp.drop_duplicates(['gvkey','fyear'],keep='last')
-
-#Winsorize
-for var in ['epspx_lead1','epspx','bkvlps','bkvlps_lag1','tacc']:    
-  crspcomp[var]=np.where(crspcomp[var].isnull(), np.nan, winsorize(crspcomp[var], limits=(0.01,0.01)))
-crspcomp.describe()
-
-#Lag Share Price
-crspcomplag1=crspcomp.copy()
-crspcomplag1['fyear']=crspcomplag1['fyear']+1
-crspcomplag1=crspcomplag1.rename(columns={'prc':'prc_lag1'})
-crspcomplag1=crspcomplag1[['gvkey','fyear','permno', 'prc_lag1']]
-crspcomp=pd.merge(crspcomp,crspcomplag1,on=['gvkey','fyear','permno'])
-crspcomp=crspcomp.dropna() 
-
-#Train/Test Split
-train = crspcomp[(crspcomp['fyear']<=2015)]
-test = crspcomp[(crspcomp['fyear']>=2016)]
-
-#Seperate target
-y_train = train['epspx_lead1']
-X_train = train.drop(['epspx_lead1','gvkey','fyear','datadate','industry','permno','permco','date','shrcd','exchcd','jdate'], axis=1)
-y_test = test['epspx_lead1']
-X_test = test.drop(['epspx_lead1','gvkey','fyear','datadate','industry','permno','permco','date','shrcd','exchcd','jdate'], axis=1)
-
-#Create regression formula to paste
-all_columns = "+".join(X_train)
-pwformula = "epspx_lead1~(NegEPS*epspx)" + all_columns
-
-#Fit Regression
-pw = sm.OLS.from_formula(formula=pwformula, data=train).fit()
-print(pw.summary())
-
-## Predict future earnings using trained models
+## Predict future earnings using trained earnings volatility models (industry-specific)
 def EV_predict(data):    
     Table = data[['gvkey', 'fyear', 'epspx_lead1', 'epspx', 'NegEPS','EPS*NegEPS','industry']]      
     temp1 = Table[['gvkey','fyear','epspx']].copy()
@@ -502,8 +452,6 @@ def EV_predict(data):
         Table[var]=np.where(Table[var].isnull(), np.nan, winsorize(Table[var], limits=(0.01,0.01)))
         
     Table['model'] = ['EVmodel_%s' %ind_num for ind_num in Table['industry']]
-    ##Filter for same industry
-    Table = Table.loc['indsutry'=='28']
         
     projection_2017 = []
         
@@ -519,11 +467,10 @@ def EV_predict(data):
     Table = Table[['gvkey', 'industry', 'fyear', 'epspx_lead1','projection_2017']]
         
     return Table
-
        
 prediction_2017 = EV_predict(test_data)
         
-## Recommend Future stocks
+## Recommend Future stocks based on industry-specific earnings volatility model
 def EV_recommend(data):    
     Table = data[['gvkey', 'fyear', 'epspx', 'NegEPS','EPS*NegEPS','industry']]      
     temp1 = Table[['gvkey','fyear','epspx']].copy()
@@ -560,30 +507,5 @@ def EV_recommend(data):
     return Table
 
 recommendation = EV_recommend(recomm_data)
-
-#extract ibes data
-ibes_id = conn.raw_sql("""
-                        select ticker, oftic
-                        from ibes.id
-                        """)
-
-ibes_guidance = conn.raw_sql("""
-                              select ticker, eefymo, range_desc, prd_yr, prd_mon, measure, mean_at_date
-                              from ibes.det_guidance where
-                              prd_yr<=2018 and prd_yr>1999
-                              """)
-
-ibes = pd.merge(ibes_guidance,ibes_id, on=['ticker'])
-
-## Join IBES Dataset to compare to analysts forecasts
-fundaclean1["ibtic"] = fundaclean1["ibtic"].str.replace("@","",regex = False)
-ibes["ticker"] = ibes["ticker"].str.replace("@","",regex = False)
-ibes["prd_yr"] = pd.to_numeric(ibes["prd_yr"], downcast = "integer")
-analysts_forecasts = pd.merge(ibes, fundaclean1, left_on=['ticker','prd_yr'], right_on=['ibtic', 'fyear'])
-analysts_forecasts['datadate'] = pd.to_datetime(analysts_forecasts['datadate'])
-analysts_forecasts = analysts_forecasts.set_index('datadate')
-analysts_forecasts= analysts_forecasts[analysts_forecasts['prd_yr'] == 2017]
-analysts_forecasts= analysts_forecasts[analysts_forecasts['measure'] == 'EPS']
-analysts_forecasts = analysts_forecasts.groupby(by = "ticker", as_index=False).last()
 
 
