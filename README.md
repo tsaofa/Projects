@@ -26,5 +26,10 @@ Similar to the above analysis, the dataset used in this project was transactiona
 [Jupyter Notebook](https://github.com/tsaofa/Projects/blob/master/eCommerce%20Analysis/eCommerce%20Analysis.ipynb)
 
 
+## Company Earnings Prediction
+
+Unlike the previous projects, this project was completed as part of my Masters degree in data analytics. The code uses data from WRDS database to predict earnings using a number of different earnings prediction models. The original goal was to attempt to reproduce some of the finidngs in academic literature (more details found in the code itself). This project, however, also enabled me to have the opportunity to write a wide variety of functions to make the analysis project smoother.
+
+[Python Code](https://github.com/tsaofa/Projects/blob/master/Earnings%20Prediction/AccountingProject.py)
 
 
