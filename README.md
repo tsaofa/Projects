@@ -2,9 +2,9 @@
 
 Hello and thanks for stopping by! 
 
-My name is Judy Tsao. I have a Ph.D. in chemistry and a Master in Management Analytics. I have worked in science outreach, e-learning, and the consumer products industry, but I am interested in anything related to technology and operations. I have a passion for translating technical knowledge into tangible and actionable insights. Here is a documentation of my journey to learning more modern data science techniques. 
+My name is Judy Tsao. I have a Ph.D. in chemistry and a Master in Management Analytics. I have worked in science outreach, e-learning, and the consumer products industry, but I am interested in anything related to technology and operations. I have a passion for translating technical knowledge into tangible and actionable insights. 
 
-The projects here are currently coding practices done at my leisure time to familiarize myself with different Python data analytics and visualization packages. Most of the code were documented using Jupyter Notebook to display the plots and model results. More detailed breakdown of the projects can be found in the notebooks of each of these projects.
+This GitHub page documents of my journey to learning more modern data science techniques. The projects shown here are currently coding practices done at my leisure time to familiarize myself with different Python data analytics and visualization packages. Most of the code were documented using Jupyter Notebook to display the plots and model results. More detailed breakdown of the projects can be found in the notebooks of each of these projects.
 
 
 ## Flight Analytics
