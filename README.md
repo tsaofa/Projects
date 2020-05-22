@@ -4,7 +4,7 @@ Hello and thanks for stopping by!
 
 My name is Judy Tsao. I have a Ph.D. in chemistry and a Master in Management Analytics. I have worked in science outreach, e-learning, and the consumer products industry, but I am interested in anything related to technology and operations. I have a passion for translating technical knowledge into tangible and actionable insights. 
 
-This GitHub page documents of my journey to learning more modern data science techniques. The projects shown here are currently coding practices done at my leisure time to familiarize myself with different Python data analytics and visualization packages. Each project contains topics and tools that I was learning at the time.
+This GitHub page documents of my journey to learning more modern data science techniques. The projects shown here are coding practices done at my leisure time to familiarize myself with different Python data analytics and visualization packages (Plotly and Plotnine/ggplot). 
 
 Most of the code were documented using Jupyter Notebook to display the plots and model results. More detailed breakdown of the projects (exploratory data analysis, modeling, interpretation) can be found in the notebooks of each of these projects. I have also added links to some of my Tableau public dashboards to complete this portfolio.
 
@@ -12,7 +12,7 @@ Most of the code were documented using Jupyter Notebook to display the plots and
 
 For any retailer, demand forecsting is important for proper planning and inventory management. This project details the use of the ARIMA model to conduct time-series prediction on a set of retail items. Plotly was used again to generate interactive visualization. Details can be found in the Jupyter Notebook link below.
 
-**Topics and Tools**: time-series analysis, seasonality decomposition, ARIMA, Plotly
+**Topics and Tools**: time-series analysis, seasonality decomposition, ARIMA
 
 [Jupyter Notebook](https://github.com/tsaofa/Projects/blob/master/Demand%20Forecasting/Store%20Demand%20Forecasting.ipynb)
 
@@ -21,7 +21,7 @@ For any retailer, demand forecsting is important for proper planning and invento
 
 The key to growing a business lies in understanding its consumers. Similar to the above analysis, the dataset used in this project was transactional data on an eCommerce site. This analysis, however, focused on customer-level data analytics. Topics explored here include: customer lifetime value, purchase timing prediciton, and multiclass prediciton using XGBoost.
 
-**Topics and Tools**: customer lifetime analysis, RFM scores, XGBoost classificaiton, Plotly, Plotnine/ggplot
+**Topics and Tools**: customer lifetime analysis, RFM scores, XGBoost classificaiton
 
 [Jupyter Notebook](https://github.com/tsaofa/Projects/blob/master/eCommerce%20Analysis/eCommerce%20Analysis.ipynb)
 
@@ -29,7 +29,7 @@ The key to growing a business lies in understanding its consumers. Similar to th
 
 Are you ever curious why flights are delayed, and which airlines are the most reliable? This analysis explored the different causes to a delay in flights using a variety of data visualization. Additionally, it showcases the use of LightGBM in a classification problem and attempts to explain the results using SHAP values.
 
-**Topics and Tools**: inferential statistics, LightGBM classification, randomized grid search, SHAP values, Plotly
+**Topics and Tools**: inferential statistics, LightGBM classification, randomized grid search, SHAP values
 
 [Jupyter Notebook](https://github.com/tsaofa/Projects/blob/master/Flight%20Analytics/Flight%20Analytics.ipynb)
 
