@@ -2,9 +2,9 @@
 
 Hello and thanks for stopping by! 
 
-My name is Judy Tsao. I have a Ph.D. in chemistry and a Master in Management Analytics. I have worked in science outreach, e-learning, and the consumer products industry, but I am interested in anything related to technology and operations. I have a passion for translating technical knowledge into tangible and actionable insights. 
+My name is Judy Tsao. I have a Ph.D. in chemistry and a Master in Management Analytics. I have worked in science outreach, e-learning, and the consumer products industry, but I am interested in anything related to technology, operations, and strategy. I have a passion for translating technical knowledge into tangible and actionable insights. 
 
-This GitHub page documents of my journey to learning more modern data science techniques. The projects shown here are coding practices done at my leisure time to familiarize myself with different Python data analytics and visualization packages (Plotly and Plotnine/ggplot). 
+This GitHub page documents of my journey to learning modern data science techniques.These projects are coding practices done at my leisure time to familiarize myself with different Python data analytics and visualization packages (Plotly and Plotnine/ggplot). 
 
 Most of the code were documented using Jupyter Notebook to display the plots and model results. More detailed breakdown of the projects (exploratory data analysis, modeling, interpretation) can be found in the notebooks of each of these projects. I have also added links to some of my Tableau public dashboards to complete this portfolio.
 
@@ -32,6 +32,12 @@ Are you ever curious why flights are delayed, and which airlines are the most re
 **Topics and Tools**: inferential statistics, LightGBM classification, randomized grid search, SHAP values
 
 [Jupyter Notebook](https://github.com/tsaofa/Projects/blob/master/Flight%20Analytics/Flight%20Analytics.ipynb)
+
+## US College Education
+
+College education is an important journey in many people's lives, but selecting the right college is often a daunting task. This is why I created this interactive dashboard to examine the different facets of making this important decision. As a beginner in Tableau, I also  wanted to explore some functionalities in creating interactive dashboards and creating custom charts. 
+
+[Tableau Dashboard](https://public.tableau.com/profile/judy.tsao#!/vizhome/US_Universities/Main)
 
 ## AirBnB Bookings
 
