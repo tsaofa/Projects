@@ -12,8 +12,9 @@ Most of the code were documented using Jupyter Notebook to display the plots and
 
 ### Store Items Demand Forecasts
 
-**Topics and Tools**: time-series analysis, seasonality decomposition, ARIMA, Plotly
 For any retailer, demand forecsting is important for proper planning and inventory management. This project details the use of the ARIMA model to conduct time-series prediction on a set of retail items. Plotly was used again to generate interactive visualization. Details can be found in the Jupyter Notebook link below.
+
+**Topics and Tools**: time-series analysis, seasonality decomposition, ARIMA, Plotly
 
 [Jupyter Notebook](https://github.com/tsaofa/Projects/blob/master/Demand%20Forecasting/Store%20Demand%20Forecasting.ipynb)
 
