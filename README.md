@@ -4,9 +4,18 @@ Hello and thanks for stopping by!
 
 My name is Judy Tsao. I have a Ph.D. in chemistry and a Master in Management Analytics. I have worked in science outreach, e-learning, and the consumer products industry, but I am interested in anything related to technology, operations, and strategy. I have a passion for translating technical knowledge into tangible and actionable insights. 
 
-This GitHub page documents of my journey to learning modern data science techniques.These projects are coding practices done at my leisure time to familiarize myself with different Python data analytics and visualization packages (Plotly and Plotnine/ggplot). 
+This GitHub page documents of my journey of learning modern data science techniques.These projects are coding practices done at my leisure time to familiarize myself with different Python data analytics and visualization packages (Plotly and Plotnine/ggplot). 
 
 Most of the code were documented using Jupyter Notebook to display the plots and model results. More detailed breakdown of the projects (exploratory data analysis, modeling, interpretation) can be found in the notebooks of each of these projects. I have also added links to some of my Tableau public dashboards to complete this portfolio.
+
+## Stock Portfolio Dashboard
+
+Monitoring stock performance is a crucial aspect of any investor's life. This project aims make data processing of stock data easier through Python script. Additionally, I have created a Dash app that allows me to check on selected stocks in real-time. 
+
+**Topics and Tools**: Yahoo Finance database, Dash web app, Plotly
+
+[Jupyter Notebook](https://github.com/tsaofa/Projects/blob/master/Stock%20Portfolio%20Dashboard/Stock%20Portfolio%20Analysis.ipynb)
+
 
 ## Store Items Demand Forecasts
 
